@@ -10,9 +10,12 @@ from telegram.ext import (
     CallbackContext,
 )
 from dowenload_func import download_songs, headers, download_songs_1
+import os
+from dotenv import load_dotenv
 
+load_dotenv()
 
-TOKEN = "7024090745:AAE0vgaZnQmTimNVUDRbm7q3zrnYubxmsHw"
+TOKEN = os.getenv("TOKEN")
 
 
 # Function to handle the /start command
