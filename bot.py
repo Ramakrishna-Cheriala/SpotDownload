@@ -3,10 +3,18 @@ from zipfile import ZipFile
 from io import BytesIO
 from telegram.constants import ChatAction
 from telegram import ForceReply, Update
-from telegram.ext import Application, CommandHandler, ContextTypes, MessageHandler, filters, CallbackContext
+from telegram.ext import (
+    Application,
+    CommandHandler,
+    ContextTypes,
+    MessageHandler,
+    filters,
+    CallbackContext,
+)
 from dowenload_func import download_songs, headers, download_songs_1
 import os
 from dotenv import load_dotenv
+import time
 
 load_dotenv()
 
@@ -55,35 +63,25 @@ async def download_from_url(update: Update, context: CallbackContext) -> None:
     if "track" in url:
         await update.message.reply_text("Wait a moment.......")
         id = url.split("/")[-1].split("?si")[0]
+        start_time = time.time()
         try:
             # song_file, song_name = download_songs(id)
-            download_link, song_name = download_songs_1(id)
-            #
+            song_file, song_name = download_songs(id)
 
-            # Directly stream the file to the user
-            with requests.get(download_link, stream=True) as response:
-                await update.message.reply_text("Almost done.....")
-                await context.bot.send_chat_action(chat_id=update.effective_chat.id, action=ChatAction.UPLOAD_DOCUMENT)
-
-                if response.status_code == 200:
-                    # Send the file to the user
-                    await context.bot.send_document(
-                        chat_id=update.effective_chat.id,
-                        document=response.raw,
-                        filename=f"{song_name}.mp3",
-                    )
-                else:
-                    await update.message.reply_text("Error downloading file.")
-            #
-            # context.bot.send_document(chat_id, song_file, filename=f"{song_name}.mp3")
+            await context.bot.send_document(
+                chat_id, song_file, filename=f"{song_name}.mp3"
+            )
+            end_time = time.time()
+            print(f"Time taken to send the file: {(end_time - start_time)} seconds")
         except Exception as e:
             print(e)
             await context.bot.send_message(chat_id, f"Failed to download song")
     elif "playlist" in url:
         id = url.split("/")[-1].split("?si")[0]
-        update.message.reply_text("It may take some time, Come back later.....")
+        await update.message.reply_text("It may take some time, Come back later.....")
         playlist_url = f"https://api.spotifydown.com/trackList/playlist/{id}"
         count = 1
+
         downloaded_files = []
 
         offset = 0
@@ -101,23 +99,62 @@ async def download_from_url(update: Update, context: CallbackContext) -> None:
                     name = track["title"]
                     try:
                         song_file, song_name = download_songs(track_id)
-                        context.bot.send_document(
+                        await context.bot.send_document(
                             chat_id, song_file, filename=f"{song_name}.mp3"
                         )
 
                         count += 1
                     except Exception as e:
-                        context.bot.send_message(
+                        await context.bot.send_message(
                             chat_id, f"Error downloading {name}: {e}"
                         )
                         continue
 
                 offset = response_json.get("nextOffset")
             else:
-                context.bot.send_message(chat_id, f"Error: {playlist_response.text}")
+                await context.bot.send_message(
+                    chat_id, f"Error: {playlist_response.text}"
+                )
                 break
 
-        update.message.reply_text(f"{count-1} songs are ready to be played....")
+        await update.message.reply_text(f"{count-1} songs are ready to be played....")
+
+    elif "album" in url:
+        print("Album")
+        id = url.split("/")[-1].split("?si")[0]
+        await update.message.reply_text("It may take some time, Come back later.....")
+        album_url = f"https://api.spotifydown.com/trackList/album/{id}"
+        count = 1
+
+        album_results = requests.get(album_url, headers=headers)
+
+        if album_results.status_code == 200:
+            album_res = album_results.json()
+            album_tracklist = album_res.get("trackList")
+            # print(album_tracklist)
+
+            for track in album_tracklist:
+
+                track_id = track["id"]
+                name = track["title"]
+                print(name)
+                try:
+                    song_file, song_name = download_songs(track_id)
+                    await context.bot.send_document(
+                        chat_id, song_file, filename=f"{song_name}.mp3"
+                    )
+
+                    count += 1
+                except Exception as e:
+                    await context.bot.send_message(
+                        chat_id, f"Error downloading {name}: {e}"
+                    )
+                    continue
+
+        else:
+            print("Error")
+
+        await update.message.reply_text(f"{count-1} songs are ready to be played....")
 
     else:
         context.bot.send_message(
