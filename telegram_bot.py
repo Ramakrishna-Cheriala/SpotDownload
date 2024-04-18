@@ -36,13 +36,15 @@ async def handle_message(update: Update, context):
 async def download_spotify(update, context):
     url = update.message.text
     if "playlist" in url:
-        # playlist_id = url.split("/")[-1].split("?si")[0]
-        tracks_list = get_list_of_tracks(url)
-        # download_playlist(playlist_id=None)
+        playlist_id = url.split("/")[-1].split("?si")[0]
+        tracks_list = get_list_of_tracks(playlist_id, "playlist")
         for track in tracks_list:
             await download_spotify_track(update, context, track['track_id'], track['title'])
     elif "album" in url:
-        pass
+        album_id = url.split("/")[-1].split("?si")[0]
+        tracks_list = get_list_of_tracks(album_id, "album")
+        for track in tracks_list:
+            await download_spotify_track(update, context, track['track_id'], track['title'])
     elif "track" in url:
         track_id = url.split("/")[-1].split("?si")[0]
         await download_spotify_track(update, context, track_id)
@@ -63,10 +65,8 @@ async def download_spotify_track(update, context, track_id, title=None):
                     )
         return
     try:
-    # if True:
         download_link = get_download_link(track_id)
         print(download_link)
-        # input()
         # Directly stream the file to the user
         with requests.get(download_link, stream=True) as response:
             await update.message.reply_text("Almost done.....")
