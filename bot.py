@@ -36,26 +36,6 @@ async def stop_command(update: Update, context):
     context.bot.stop()
 
 
-def download_new_command(update: Update, context):
-    # Extract the link from the command arguments
-    link = " ".join(context.args)
-
-    # Send "typing" action to indicate bot is processing
-    # context.bot.send_chat_action(chat_id=update.effective_chat.id, action=ChatAction.TYPING)
-
-    # Directly stream the file to the user
-    with requests.get(link, stream=True) as response:
-        if response.status_code == 200:
-            # Send the file to the user
-            context.bot.send_document(
-                chat_id=update.effective_chat.id,
-                document=response.raw,
-                filename="filename.extension",
-            )
-        else:
-            update.message.reply_text("Error downloading file.")
-
-
 async def download_from_url(update: Update, context: CallbackContext) -> None:
     url = update.message.text
     chat_id = update.message.chat_id
@@ -65,7 +45,6 @@ async def download_from_url(update: Update, context: CallbackContext) -> None:
         id = url.split("/")[-1].split("?si")[0]
         start_time = time.time()
         try:
-            # song_file, song_name = download_songs(id)
             song_file, song_name = download_songs(id)
 
             await context.bot.send_document(
@@ -76,6 +55,7 @@ async def download_from_url(update: Update, context: CallbackContext) -> None:
         except Exception as e:
             print(e)
             await context.bot.send_message(chat_id, f"Failed to download song")
+
     elif "playlist" in url:
         id = url.split("/")[-1].split("?si")[0]
         await update.message.reply_text("It may take some time, Come back later.....")
@@ -167,16 +147,6 @@ async def handle_message(update: Update, context):
     message = update.message
     message_type = message.chat.type
     text = message.text.lower()
-
-    # if text.startswith("/start"):
-    #     start_command(update, context)
-    # elif text.startswith("/help"):
-    #     help_command(update, context)
-    # elif text.startswith("/stop"):
-    #     start_command(update, context)
-    # elif text.startswith("/download_new"):
-    #     start_command(update, context)
-    # else:
     await download_from_url(update, context)
 
 
@@ -192,14 +162,9 @@ if __name__ == "__main__":
     application.add_handler(CommandHandler("stop", stop_command))
     application.add_handler(MessageHandler(filters.TEXT, handle_message))
 
-    # Get the dispatcher to register handlers
-    # dispatcher = updater.dispatcher
-
-    # Register command handlers
-    # dispatcher.add_handler(CommandHandler("start", start_command))
-    # dispatcher.add_handler(CommandHandler("help", help_command))
-    # dispatcher.add_handler(
-    #     CommandHandler("download_new", download_new_command, pass_args=True)
-    # )
-
     application.run_polling(allowed_updates=Update.ALL_TYPES)
+
+
+"""
+https://music.apple.com/in/album/rangasthalam-original-motion-picture-soundtrack/1359132636
+"""

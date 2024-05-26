@@ -1,6 +1,7 @@
 import requests
 import os
-import time
+from mutagen.mp3 import MP3
+from mutagen.id3 import ID3, APIC, error
 
 
 headers = {
@@ -16,7 +17,10 @@ headers = {
 
 
 # Define the path to the downloaded songs folder
-downloaded_songs_folder = "downloaded_songs"
+downloaded_songs_folder = "Songs"
+
+if not os.path.exists(downloaded_songs_folder):
+    os.makedirs(downloaded_songs_folder)
 
 
 def download_songs(id):
@@ -31,6 +35,7 @@ def download_songs(id):
         # Extract the download link
         download_link = response_json.get("link")
         song_name = response_json.get("metadata")["title"]
+        cover_url = response_json.get("metadata").get("cover")
         # print(response_json)
         sanitized_track_id = "".join(
             x for x in song_name if x.isalnum() or x in [" ", "_", "-"]
@@ -53,9 +58,45 @@ def download_songs(id):
                 # Save the downloaded song to the downloaded songs folder
                 with open(song_file_path, "wb") as file:
                     file.write(song_download.content)
+
+                if cover_url:
+                    add_cover_image_to_mp3(song_file_path, cover_url, session)
                 return song_download.content, sanitized_track_id
     else:
         return None
+
+
+def add_cover_image_to_mp3(file_path, cover_url, session):
+    try:
+        # Download the cover image
+        image_response = session.get(cover_url, headers=headers)
+        if image_response.status_code == 200:
+            # Load the MP3 file
+            audio = MP3(file_path, ID3=ID3)
+
+            # Add ID3 tag if not present
+            try:
+                audio.add_tags()
+            except error:
+                pass
+
+            # Add the cover image
+            audio.tags.add(
+                APIC(
+                    encoding=3,  # 3 is for utf-8
+                    mime="image/jpeg",  # image mime type
+                    type=3,  # 3 is for the cover image
+                    desc="Cover",
+                    data=image_response.content,
+                )
+            )
+
+            # Save the updated tags
+            audio.save()
+            print(f"Cover image added to {file_path}")
+
+    except Exception as e:
+        print(f"Error adding cover image: {e}")
 
 
 def download_songs_1(id):
